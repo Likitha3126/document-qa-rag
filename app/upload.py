@@ -31,11 +31,19 @@ async def upload_pdf(file: UploadFile = File(...)):
     )
 
     chunks = splitter.split_text(text)
+    from app.embedding_model import model
+    from app.vector_store import store_chunks
+
+    # Generate embeddings for the chunks
+    embeddings = model.encode(chunks).tolist()
+
+    # Store the chunks and their embeddings
+    store_chunks(chunks, embeddings)
 
     # Return information about chunks
     return {
-        "filename": file.filename,
-        "characters": len(text),
-        "total_chunks": len(chunks),
-        "first_chunk": chunks[0] if chunks else ""
-    }
+    "filename": file.filename,
+    "characters": len(text),
+    "total_chunks": len(chunks),
+    "stored": True
+}
