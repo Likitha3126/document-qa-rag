@@ -1,16 +1,35 @@
 from app.upload import router as upload_router
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import ollama
 from app.vector_store import retrieve_chunks
 from app.embedding_model import model
+from app.document_state import current_document
 
-app = FastAPI(title="Document Q&A API")
+app = FastAPI(
+    title="Document Q&A API",
+    description="RAG-based Document Question Answering using Qwen3, ChromaDB and FastAPI",
+    version="1.0.0"
+)
+@app.get("/")
+def home():
+    return {"message": "Backend Running"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 app.include_router(upload_router)
+
+@app.get("/document-info")
+def document_info():
+    return current_document
 
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(
+        min_length=3,
+        max_length=500
+    )
 
 
 @app.get("/")
@@ -25,21 +44,30 @@ def chat(request: ChatRequest):
         request.question
     ).tolist()
 
-    retrieved_chunks = retrieve_chunks(
-        query_embedding
-    )
+    retrieval_result = retrieve_chunks(query_embedding)
+
+    retrieved_chunks = retrieval_result["documents"]
+    retrieved_metadata = retrieval_result["metadata"]
 
     context = "\n\n".join(retrieved_chunks)
 
+
     prompt = f"""
-    Answer ONLY using the provided context.
+You are a document question-answering assistant.
 
-    Context:
-    {context}
+Answer using ONLY the provided context.
 
-    Question:
-    {request.question}
-    """
+If the answer is not present in the context, say:
+"I could not find that information in the document."
+
+Context:
+{context}
+
+Question:
+{request.question}
+
+Answer:
+"""
 
     response = ollama.chat(
         model="qwen3:4b",
@@ -56,6 +84,6 @@ def chat(request: ChatRequest):
     )
 
     return {
-        "answer": response["message"]["content"],
-        "sources": retrieved_chunks
-    }
+    "answer": response["message"]["content"],
+    "sources": retrieved_metadata
+}
