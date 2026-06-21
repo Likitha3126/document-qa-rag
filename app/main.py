@@ -5,11 +5,19 @@ import ollama
 from app.vector_store import retrieve_chunks
 from app.embedding_model import model
 from app.document_state import current_document
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Document Q&A API",
     description="RAG-based Document Question Answering using Qwen3, ChromaDB and FastAPI",
     version="1.0.0"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 @app.get("/")
 def home():

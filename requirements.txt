@@ -5,4 +5,4 @@ pypdf
 langchain-text-splitters
 chromadb
 sentence-transformers
-python-multipartwhere
+python-multipart
